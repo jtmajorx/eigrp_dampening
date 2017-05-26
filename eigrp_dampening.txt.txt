@@ -1,0 +1,45 @@
+### Create Empty Access List and CoPP Policy ###
+ip access-list extended EIGRP_ACL
+!
+class-map match-all EIGRP_COPP
+ match access-group name EIGRP_ACL
+!
+policy-map CoPP
+ class EIGRP_COPP
+  drop
+
+### Apply Policy-Map to Control Plane ###
+control-plane
+ service-policy input CoPP
+
+ 
+### EEM Scripts to detect Neighbor flaps ### 
+event manager applet EIGRP-DAMPEN
+ event syslog pattern "DUAL-5-NBRCHANGE: EIGRP-IPv4 [0-9]+: Neighbor [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ [(][A-Za-z]+[0-9]+[)] is down: [^,]+"
+ trigger occurs 3 period 60
+ action 1.0 regexp "EIGRP-IPv4 ([^:]+)" "$_syslog_msg" match asn
+ action 1.1 regexp "Neighbor ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)" "$_syslog_msg" match neighbor
+ action 1.2 regexp "[(]([A-Za-z]+[0-9]+)[)]" "$_syslog_msg" match interface
+ action 1.3 regexp "is down: ([^,]+)" "$_syslog_msg" match downreason
+ action 1.4 puts "EIGRP-FLAP-DOWN-ADJ:$asn:$neighbor:$interface:$downreason"
+ action 1.5 cli command "enable"
+ action 1.6 cli command "configure terminal"
+ action 1.7 cli command "ip access-list extended EIGRP_ACL"
+ action 1.8 cli command "permit eigrp host $neighbor any"
+ action 1.9 cli command "do clear ip eigrp neighbor $neighbor"
+ action 2.0 cli command "do event manager run EIGRP-UNDAMPEN"
+ action 2.1 cli command "end"
+ action 2.2 cli command "exit"
+!
+!
+event manager applet EIGRP-UNDAMPEN
+ event none maxrun 180
+ trigger delay 120
+ action 1.0 cli command "enable"
+ action 1.1 cli command "configure terminal"
+ action 1.2 cli command "do show run | sec ip access-list extended EIGRP_ACL"
+ action 1.3 regexp "[0-9]+.[0-9].+[0-9].+[0-9]" "$_cli_result" neighbor
+ action 1.5 cli command "ip access-list extended EIGRP_ACL"
+ action 1.6 cli command "no permit eigrp host $neighbor any"
+ action 1.7 cli command "end"
+ action 1.8 cli command "exit"
