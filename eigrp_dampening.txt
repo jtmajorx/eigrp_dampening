@@ -15,7 +15,7 @@ control-plane
  
 ### EEM Scripts to detect Neighbor flaps ### 
 event manager applet EIGRP-DAMPEN
- event syslog pattern "DUAL-5-NBRCHANGE: EIGRP-IPv4 [0-9]+: Neighbor [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ [(][A-Za-z]+[0-9]+[)] is down: [^,]+"
+ event syslog pattern "DUAL-5-NBRCHANGE: EIGRP-IPv4 [0-9]+: Neighbor [0-9]+\.[0-9]+\.[0-9]+\.[0-9].*is down:.*"
  trigger occurs 3 period 60
  action 1.0 regexp "EIGRP-IPv4 ([^:]+)" "$_syslog_msg" match asn
  action 1.1 regexp "Neighbor ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)" "$_syslog_msg" match neighbor
